@@ -1,10 +1,59 @@
 version: 2
 jobs:
+  build:
+    docker:
+      - image: microsoft/powershell:ubuntu-16.04
+    environment:
+      OUTPUT: /output/workspace/qlik-cli
+    steps:
+      - checkout
+      - run:
+          name: Create output directories
+          shell: pwsh
+          command: |
+            echo $env:OUTPUT
+            New-Item -ItemType Directory -Force -Path $env:OUTPUT/functions
+            New-Item -ItemType Directory -Force -Path $env:OUTPUT/resources
+      - run:
+          name: Copy files to output directory
+          shell: pwsh
+          command: |
+            $psd = Import-PowerShellDataFile -Path ./Qlik-Cli.psd1
+            $psd.NestedModules.ForEach({
+              Copy-Item -Path $_ -Destination "$env:OUTPUT/$_".Replace('\', '/') -Force
+            })
+            Copy-Item -Path $psd.RootModule -Destination "$env:OUTPUT/"
+            Copy-Item -Path ./Qlik-Cli.psd1 -Destination "$env:OUTPUT/"
+      - run:
+          name: Update module manifest
+          shell: pwsh
+          command: |
+            Push-Location $env:OUTPUT
+            $psd = Import-PowerShellDataFile -Path ./Qlik-Cli.psd1
+            Import-Module ./Qlik-Cli.psd1
+            $cmd = Get-Command -Module Qlik-Cli
+            $version = if($env:CIRCLE_TAG) { $env:CIRCLE_TAG } else { '1.0.0' }
+            [CultureInfo]::CurrentCulture = 'en-GB'
+            Update-ModuleManifest `
+              -Path $env:OUTPUT/Qlik-Cli.psd1 `
+              -ModuleVersion $version `
+              -NestedModules $psd.NestedModules `
+              -FunctionsToExport $cmd.Name
+      - store_artifacts:
+          path: /output/workspace/qlik-cli
+          destination: build
+      - persist_to_workspace:
+          root: /output/workspace
+          paths:
+            - qlik-cli
+
   test:
     docker:
       - image: microsoft/powershell:ubuntu-16.04
+    working_directory: /output/workspace/qlik-cli
     steps:
-      - checkout
+      - attach_workspace:
+          at: /output/workspace
       - run:
           name: Test module
           command: pwsh -File ./.circleci/scripts/test-module.ps1
@@ -22,8 +71,10 @@ jobs:
     docker:
       - image: microsoft/powershell:ubuntu-16.04
         command: pwsh
+    working_directory: /output/workspace/qlik-cli
     steps:
-      - checkout
+      - attach_workspace:
+          at: /output/workspace
       - run:
           name: Pre-release checks
           command: pwsh -File ./.circleci/scripts/pre-release-checks.ps1
@@ -32,17 +83,16 @@ jobs:
     docker:
       - image: microsoft/powershell:ubuntu-16.04
         command: pwsh
+    working_directory: /output/workspace/qlik-cli
     steps:
-      - checkout
+      - attach_workspace:
+          at: /output/workspace
       - run:
           name: Install .Net Core SDK
           command: apt-get update && apt-get install -y dotnet-sdk-2.1.4
       - run:
           name: Publish module to PowerShell Gallery
           command: |
-            cd ..
-            mv project qlik-cli
-            cd qlik-cli
             pwsh -Command 'Publish-Module `
               -Path ./ `
               -NuGetApiKey $env:PSG_API_KEY `
@@ -52,6 +102,7 @@ jobs:
   publish-github-release:
     docker:
       - image: cibuilds/github:latest
+    working_directory: /output/workspace/qlik-cli
     steps:
       - attach_workspace:
           at: /output/workspace
@@ -70,6 +121,10 @@ workflows:
   version: 2
   test-and-deploy:
     jobs:
+      - build:
+          filters:
+            branches:
+              only: circleci
       - test:
           filters:
             branches:
@@ -79,16 +134,22 @@ workflows:
             - test
           filters:
             branches:
-              only: testing
+              only: master
+            tags:
+              only: /^v\d+\.\d+\.\d+/
       - publish-powershell-gallery:
           requires:
-            - test
+            - pre-release-checks
           filters:
             branches:
               only: master
+            tags:
+              only: /^v\d+\.\d+\.\d+(?!-)/
       - publish-github-release:
           requires:
-            - test
+            - pre-release-checks
           filters:
             branches:
               only: master
+            tags:
+              only: /^v\d+\.\d+\.\d+(?!-)/
