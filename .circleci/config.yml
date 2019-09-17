@@ -39,9 +39,6 @@ jobs:
               -ModuleVersion $version `
               -NestedModules $psd.NestedModules `
               -FunctionsToExport $cmd.Name
-      - store_artifacts:
-          path: /output/workspace/qlik-cli
-          destination: build
       - persist_to_workspace:
           root: /output/workspace
           paths:
@@ -78,6 +75,9 @@ jobs:
       - run:
           name: Pre-release checks
           command: pwsh -File ./.circleci/scripts/pre-release-checks.ps1
+      - store_artifacts:
+          path: /output/workspace/qlik-cli
+          destination: build
 
   publish-powershell-gallery:
     docker:
@@ -126,6 +126,8 @@ workflows:
             branches:
               only: circleci
       - test:
+          requires:
+            - build
           filters:
             branches:
               ignore: gh-pages
@@ -134,7 +136,9 @@ workflows:
             - test
           filters:
             branches:
-              only: master
+              only:
+                - master
+                - circleci
             tags:
               only: /^v\d+\.\d+\.\d+/
       - publish-powershell-gallery:
