@@ -2,6 +2,11 @@ defaults: &defaults
   environment:
     OUTPUT: /output/workspace/qlik-cli
 
+only-version-tags: &only-version-tags
+  filters:
+    tags:
+      only: /^v\d+\.\d+\.\d+-.*/
+
 version: 2
 jobs:
   build:
@@ -137,32 +142,28 @@ workflows:
   test-and-deploy:
     jobs:
       - build:
+          <<: *only-version-tags
           filters:
             branches:
               ignore: /circleci/
-            tags:
-              only: /^v\d+\.\d+\.\d+.*/
       - test:
+          <<: *only-version-tags
           requires:
             - build
           filters:
             branches:
               ignore: gh-pages
       - pre-release-checks:
+          <<: *only-version-tags
           requires:
             - test
-          filters:
-            tags:
-              only: /^v\d+\.\d+\.\d+/
       - publish-powershell-gallery:
           requires:
             - pre-release-checks
           filters:
             tags:
-              only: /^v\d+\.\d+\.\d+(?!-)/
+              only: /^v\d+\.\d+\.\d+$/
       - publish-github-release:
+          <<: *only-version-tags
           requires:
             - pre-release-checks
-          filters:
-            tags:
-              only: /^v\d+\.\d+\.\d+/
