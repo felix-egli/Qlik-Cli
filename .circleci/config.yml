@@ -136,6 +136,8 @@ workflows:
           filters:
             branches:
               only: circleci
+            tags:
+              only: /^v\d+\.\d+\.\d+/
       - test:
           requires:
             - build
@@ -146,25 +148,17 @@ workflows:
           requires:
             - test
           filters:
-            branches:
-              only:
-                - master
-                - circleci
             tags:
               only: /^v\d+\.\d+\.\d+/
       - publish-powershell-gallery:
           requires:
             - pre-release-checks
           filters:
-            branches:
-              only: master
             tags:
               only: /^v\d+\.\d+\.\d+(?!-)/
       - publish-github-release:
           requires:
             - pre-release-checks
           filters:
-            branches:
-              only: master
             tags:
               only: /^v\d+\.\d+\.\d+/
