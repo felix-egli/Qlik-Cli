@@ -9,6 +9,9 @@ jobs:
     docker:
       - image: microsoft/powershell:ubuntu-16.04
     steps:
+      - run:
+          name: Install git
+          command: apt-get -qq update; apt-get -y install git
       - checkout
       - run:
           name: Create output directories
