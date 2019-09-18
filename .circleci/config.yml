@@ -1,7 +1,6 @@
 defaults: &defaults
   environment:
     OUTPUT: /output/workspace/qlik-cli
-    CIRCLE_TAG: 1.16.2
 
 version: 2
 jobs:
@@ -107,6 +106,7 @@ jobs:
               -Verbose'
 
   publish-github-release:
+    <<: *defaults
     docker:
       - image: cibuilds/github:latest
     working_directory: /output/workspace/qlik-cli
@@ -116,12 +116,16 @@ jobs:
       - run:
           name: Publish release on GitHub
           command: |
-            VERSION=$(cat /output/workspace/version)
+            VERSION=$(echo $CIRCLE_TAG | sed -n 's/v\([0-9]\+\.[0-9]\+\.[0-9]\+\)/\1/p')
+            if [[ $VERSION =~ "-" ]]
+            then
+              args="--prerelease --draft"
+            fi
             ghr -t ${GITHUB_TOKEN} \
                 -u ${CIRCLE_PROJECT_USERNAME} \
                 -r ${CIRCLE_PROJECT_REPONAME} \
                 -c ${CIRCLE_SHA1} \
-                ${VERSION} \
+                ${VERSION} ${args} \
                 /output/workspace/Qlik-Cli.psm1
 
 workflows:
@@ -163,4 +167,4 @@ workflows:
             branches:
               only: master
             tags:
-              only: /^v\d+\.\d+\.\d+(?!-)/
+              only: /^v\d+\.\d+\.\d+/
