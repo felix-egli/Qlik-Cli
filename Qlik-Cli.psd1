@@ -75,7 +75,7 @@ CmdletsToExport = ''
 VariablesToExport = ''
 
 # Aliases to export from this module
-AliasesToExport = 'Qonnect', 'Get-QlikLoginAccess'
+AliasesToExport = 'Qonnect', 'Get-QlikAnalyserAccessType', 'Remove-QlikAnalyserAccessType'
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()

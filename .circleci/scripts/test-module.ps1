@@ -1,4 +1,10 @@
+param (
+  $Path
+)
+
 $ErrorActionPreference = "Stop"
+
+if ($Path) { Push-Location $Path }
 
 Install-Module Pester -Force
 Import-Module ./Qlik-Cli.psd1
@@ -9,7 +15,8 @@ if ((Test-ModuleManifest -Path ./Qlik-Cli.psd1).Version -ne (Get-Module -Name Ql
 
 New-Item `
   -ItemType Directory `
-  -Path /output/test-results/pester
+  -Path /output/test-results/pester `
+  -Force
 
 Invoke-Pester `
   -EnableExit `
@@ -32,10 +39,6 @@ if ($SplitCount -ne $MergedCount) {
   Write-Error  -Message ("Merged module contains wrong number of commands," `
                        + " has $MergedCount and should have $SplitCount")
 }
-
-New-Item `
-  -ItemType Directory `
-  -Path /output/workspace
 
 Copy-Item ./Qlik-Cli-Merged.psm1 /output/workspace/Qlik-Cli.psm1
 (Get-Module Qlik-Cli).Version.ToString() |

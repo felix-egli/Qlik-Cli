@@ -1,15 +1,18 @@
+param (
+  $Path
+)
+
 $ErrorActionPreference = "Stop"
+
+if ($Path) { Push-Location $Path }
 
 if ((Test-ModuleManifest -Path ./Qlik-Cli.psd1).Version -le (Find-Module -Name Qlik-Cli).Version) {
   Write-Error "Module version already exists"
 }
 
-$password = ConvertTo-SecureString -String $env:GITHUB_TOKEN -AsPlainText -Force
-$credential = New-Object System.Management.Automation.PSCredential("ahaydon", $password)
 $release = Invoke-RestMethod `
   -Method Get `
-  -Uri "https://api.github.com/repos/ahaydon/qlik-cli/releases/latest" `
-  -Credential $credential
+  -Uri "https://api.github.com/repos/ahaydon/qlik-cli/releases/latest"
 
 if ((Test-ModuleManifest -Path ./Qlik-Cli.psd1).Version -le [System.Version]$release.tag_name) {
   Write-Error "Module version must be newer than last published version"
@@ -21,7 +24,6 @@ $null = try {
   $release = Invoke-RestMethod `
     -Method Get `
     -Uri "https://api.github.com/repos/ahaydon/qlik-cli/releases/tags/$version" `
-    -Credential $credential `
     -ErrorAction SilentlyContinue
 } catch [System.Net.Http.HttpRequestException] {
   if ($_.Exception.Response.StatusCode -ne "NotFound") {

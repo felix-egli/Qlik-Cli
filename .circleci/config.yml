@@ -1,10 +1,14 @@
+defaults: &defaults
+  environment:
+    OUTPUT: /output/workspace/qlik-cli
+    CIRCLE_TAG: 1.16.2
+
 version: 2
 jobs:
   build:
+    <<: *defaults
     docker:
       - image: microsoft/powershell:ubuntu-16.04
-    environment:
-      OUTPUT: /output/workspace/qlik-cli
     steps:
       - checkout
       - run:
@@ -24,6 +28,7 @@ jobs:
             })
             Copy-Item -Path $psd.RootModule -Destination "$env:OUTPUT/"
             Copy-Item -Path ./Qlik-Cli.psd1 -Destination "$env:OUTPUT/"
+            Copy-Item -Path ./tests/ -Destination "$env:OUTPUT/" -Recurse -Force
       - run:
           name: Update module manifest
           shell: pwsh
@@ -45,15 +50,16 @@ jobs:
             - qlik-cli
 
   test:
+    <<: *defaults
     docker:
       - image: microsoft/powershell:ubuntu-16.04
-    working_directory: /output/workspace/qlik-cli
     steps:
+      - checkout
       - attach_workspace:
           at: /output/workspace
       - run:
           name: Test module
-          command: pwsh -File ./.circleci/scripts/test-module.ps1
+          command: pwsh -File ./.circleci/scripts/test-module.ps1 -Path $OUTPUT
       - store_test_results:
           path: /output/test-results
       - store_artifacts:
@@ -65,16 +71,17 @@ jobs:
             - ./*
 
   pre-release-checks:
+    <<: *defaults
     docker:
       - image: microsoft/powershell:ubuntu-16.04
         command: pwsh
-    working_directory: /output/workspace/qlik-cli
     steps:
+      - checkout
       - attach_workspace:
           at: /output/workspace
       - run:
           name: Pre-release checks
-          command: pwsh -File ./.circleci/scripts/pre-release-checks.ps1
+          command: pwsh -File ./.circleci/scripts/pre-release-checks.ps1 -Path $OUTPUT
       - store_artifacts:
           path: /output/workspace/qlik-cli
           destination: build

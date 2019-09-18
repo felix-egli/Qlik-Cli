@@ -6,6 +6,7 @@ packer_cache/
 license.json
 .vs
 .vagrant
+*.log
 
 # keys
 *.pfx
