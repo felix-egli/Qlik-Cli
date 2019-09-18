@@ -40,10 +40,11 @@ jobs:
             Import-Module ./Qlik-Cli.psd1
             $cmd = Get-Command -Module Qlik-Cli
             $version = if($env:CIRCLE_TAG) { $env:CIRCLE_TAG } else { '1.0.0' }
+            $version -match "\d+\.\d+\.\d+" | Out-Null
             [CultureInfo]::CurrentCulture = 'en-GB'
             Update-ModuleManifest `
               -Path $env:OUTPUT/Qlik-Cli.psd1 `
-              -ModuleVersion $version `
+              -ModuleVersion $matches[0] `
               -NestedModules $psd.NestedModules `
               -FunctionsToExport $cmd.Name
       - persist_to_workspace:
